@@ -165,6 +165,39 @@ func (p *scripter) Close() {
 	}
 }
 
+type lego struct {
+	Script string
+
+	domains []struct{ domain, token, keyAuth string }
+}
+
+func (p *lego) DNSSetup(ctx context.Context, domain, text string) bool {
+	log.Printf("dummy > %s %s %s\n", p.Script, domain, text)
+	return false
+}
+
+func (p *lego) Present(ctx context.Context, domain, token, keyAuth string) error {
+	log.Printf("> %s %s %s %s\n", p.Script, domain, token, keyAuth)
+	cmd := exec.Command(p.Script, domain, token, keyAuth)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	p.domains = append(p.domains, struct{ domain, token, keyAuth string }{domain, token, keyAuth})
+	return nil
+}
+
+func (p *lego) Close() {
+	for _, domain := range p.domains {
+		log.Printf("> %s --cleanup %s %s %s\n", p.Script, domain.domain, domain.token, domain.keyAuth)
+		cmd := exec.Command(p.Script, "--cleanup", domain.domain, domain.token, domain.keyAuth)
+		if err := cmd.Run(); err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+/* */
+
 func renew(q *cli.Context) error {
 	key, err := readKey(q.String("a"))
 	if err != nil {
@@ -219,7 +252,13 @@ func renew(q *cli.Context) error {
 
 	r := acme.NewRenew(p)
 
-	if q.IsSet("s") {
+	if q.IsSet("l") {
+		l := &lego{Script: q.String("l")}
+		r.Continue = l
+
+		defer l.Close()
+
+	} else if q.IsSet("s") {
 		s := &scripter{Script: q.String("s")}
 		r.Continue = s
 
@@ -350,6 +389,9 @@ func main() {
 				},
 				cli.StringFlag{
 					Name: "dns-script, s",
+				},
+				cli.StringFlag{
+					Name: "dns-lego, l",
 				},
 			},
 			Action: wrap(renew),

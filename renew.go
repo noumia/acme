@@ -15,6 +15,11 @@ type Continue interface {
 	DNSSetup(ctx context.Context, domain, text string) bool
 }
 
+type Lego interface {
+	Continue
+	Present(ctx context.Context, domain, token, keyAuth string) error
+}
+
 type Renew struct {
 	cli *Client
 
@@ -201,15 +206,27 @@ func (p *Renew) doChallenge(ctx context.Context, authz *Authorization, cha *Chal
 		return err
 	}
 
-	if !p.Continue.DNSSetup(ctx, domain, text) {
-		return errors.New("_acme-challenge.abort")
+	if lego, ok := p.Continue.(Lego); ok {
+		keyAuth, err := p.cli.GetKeyAuthorization(cha.Token)
+		if err != nil {
+			return err
+		}
+
+		if err := lego.Present(ctx, authz.Identifier.Value, cha.Token, keyAuth); err != nil {
+			return err
+		}
+
+	} else {
+		if !p.Continue.DNSSetup(ctx, domain, text) {
+			return errors.New("_acme-challenge.abort")
+		}
 	}
 
 	/* */
 
 	ms := 0
-	for i := 0; i < p.DNSProbe + p.DNSRetry; i++ {
-		if i % p.DNSLevel == 0 {
+	for i := 0; i < p.DNSProbe+p.DNSRetry; i++ {
+		if i%p.DNSLevel == 0 {
 			ms += p.Wait
 		}
 		Sleep(ctx, ms)
