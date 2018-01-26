@@ -244,6 +244,10 @@ func renew(q *cli.Context) error {
 
 	p := acme.NewClient(key)
 
+	if q.Bool("v") {
+		p.Verbose = true
+	}
+
 	if err := p.Describe(ctx, q.String("end-point")); err != nil {
 		return err
 	}
@@ -392,6 +396,9 @@ func main() {
 				},
 				cli.StringFlag{
 					Name: "dns-lego, l",
+				},
+				cli.BoolFlag{
+					Name: "verbose, v",
 				},
 			},
 			Action: wrap(renew),
