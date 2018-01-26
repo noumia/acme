@@ -25,11 +25,13 @@ type Renew struct {
 
 	Continue Continue
 
-	AcmeRetry int
-	DNSProbe  int
-	DNSRetry  int
-	DNSLevel  int
-	Wait      int
+	ChaRetry int
+	ChaLevel int
+	FinRetry int
+	DNSProbe int
+	DNSRetry int
+	DNSLevel int
+	Wait     int
 
 	request *x509.CertificateRequest
 
@@ -59,11 +61,13 @@ func NewRenew(cli *Client) *Renew {
 	p := &Renew{
 		cli: cli,
 
-		AcmeRetry: 10,
-		DNSProbe:  60,
-		DNSRetry:  60,
-		DNSLevel:  10,
-		Wait:      1500, // ms
+		ChaRetry: 60,
+		ChaLevel: 10,
+		FinRetry: 20,
+		DNSProbe: 60,
+		DNSRetry: 60,
+		DNSLevel: 10,
+		Wait:     1500, // ms
 	}
 
 	p.Continue = p
@@ -166,23 +170,29 @@ func (p *Renew) doAuthz(ctx context.Context, aid string) error {
 
 	/* */
 
-	ka, err := p.cli.GetKeyAuthorization(cha.Token)
-	if err != nil {
-		return err
-	}
+	if cha.Status == "pending" {
+		ka, err := p.cli.GetKeyAuthorization(cha.Token)
+		if err != nil {
+			return err
+		}
 
-	req := map[string]interface{}{
-		"keyAuthorization": ka,
-	}
+		req := map[string]interface{}{
+			"keyAuthorization": ka,
+		}
 
-	if _, err = p.cli.PostChallenge(ctx, cha.URL, req); err != nil {
-		return err
+		if _, err = p.cli.PostChallenge(ctx, cha.URL, req); err != nil {
+			return err
+		}
 	}
 
 	/* */
 
-	for i := 0; i < p.AcmeRetry; i++ {
-		Sleep(ctx, p.Wait)
+	ms := 0
+	for i := 0; i < p.ChaRetry; i++ {
+		if i%p.ChaLevel == 0 {
+			ms += p.Wait
+		}
+		Sleep(ctx, ms)
 
 		authz, err := p.cli.GetAuthorization(ctx, aid)
 		if err != nil {
@@ -262,7 +272,7 @@ func (p *Renew) doFinalize(ctx context.Context, order *Order, oid string) error 
 
 	/* */
 
-	for i := 0; i < p.AcmeRetry; i++ {
+	for i := 0; i < p.FinRetry; i++ {
 		Sleep(ctx, p.Wait)
 
 		order, err := p.cli.GetOrder(ctx, oid)
