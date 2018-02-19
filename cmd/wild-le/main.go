@@ -29,16 +29,22 @@ func readKey(path string) (crypto.Signer, error) {
 		return nil, err
 	}
 
-	d, _ := pem.Decode(b)
-	if d == nil {
-		return nil, fmt.Errorf("no block found in %q", path)
-	}
+	for {
+		d, p := pem.Decode(b)
+		if d == nil {
+			return nil, fmt.Errorf("no valid block found in %q", path)
+		}
 
-	if d.Type == "RSA PRIVATE KEY" {
-		return x509.ParsePKCS1PrivateKey(d.Bytes)
-	}
+		if d.Type == "RSA PRIVATE KEY" {
+			return x509.ParsePKCS1PrivateKey(d.Bytes)
+		}
 
-	return nil, fmt.Errorf("%q is unsupported", d.Type)
+		if d.Type == "EC PRIVATE KEY" {
+			return x509.ParseECPrivateKey(d.Bytes)
+		}
+
+		b = p
+	}
 }
 
 func readCsr(path string) (*x509.CertificateRequest, error) {

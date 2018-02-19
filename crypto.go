@@ -2,6 +2,7 @@ package acme
 
 import (
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -23,6 +24,25 @@ func EncodeJWK(pub crypto.PublicKey) (string, error) {
 		return jwk, nil
 	}
 
+	if key, ok := pub.(*ecdsa.PublicKey); ok {
+		p := key.Curve.Params()
+		n := (p.BitSize + 7) / 8
+		x := key.X.Bytes()
+		if n > len(x) {
+			x = append(make([]byte, n-len(x)), x...)
+		}
+		y := key.Y.Bytes()
+		if n > len(y) {
+			y = append(make([]byte, n-len(y)), y...)
+		}
+		jwk := fmt.Sprintf(`{"crv":"%s","kty":"EC","x":"%s","y":"%s"}`,
+			p.Name,
+			base64.RawURLEncoding.EncodeToString(x),
+			base64.RawURLEncoding.EncodeToString(y))
+
+		return jwk, nil
+	}
+
 	return "", errors.New("Unsupported.Key")
 }
 
@@ -35,10 +55,48 @@ func ThumbprintJWK(pub crypto.PublicKey) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(by[:]), nil
 }
 
+func Hasher(key crypto.Signer) (string, crypto.Hash) {
+	switch key := key.(type) {
+	case *rsa.PrivateKey:
+		return "RS256", crypto.SHA256
+	case *ecdsa.PrivateKey:
+		switch key.Params().Name {
+		case "P-256":
+			return "ES256", crypto.SHA256
+		case "P-384":
+			return "ES384", crypto.SHA384
+		case "P-521":
+			return "ES512", crypto.SHA512
+		}
+	}
+	return "", 0
+}
+
+func Sign(key crypto.Signer, hasher crypto.Hash, digest []byte) ([]byte, error) {
+	switch key := key.(type) {
+	case *rsa.PrivateKey:
+		return key.Sign(rand.Reader, digest, hasher)
+	case *ecdsa.PrivateKey:
+		r, s, err := ecdsa.Sign(rand.Reader, key, digest)
+		if err != nil {
+			return nil, err
+		}
+		rb, sb := r.Bytes(), s.Bytes()
+		size := (key.Params().BitSize + 7) / 8
+		sig := make([]byte, size*2)
+		copy(sig[size-len(rb):], rb)
+		copy(sig[size*2-len(sb):], sb)
+		return sig, nil
+	}
+	return nil, errors.New("Unsupported.Key")
+}
+
 func EncodeJWS(claimset interface{}, key crypto.Signer, nonce string, kid string, url string) ([]byte, error) {
+	alg, hasher := Hasher(key)
+
 	var header string
 	if kid != "" {
-		header = fmt.Sprintf(`{"alg":"RS256","kid":%q,"nonce":%q,"url":%q}`, kid, nonce, url)
+		header = fmt.Sprintf(`{"alg":%q,"kid":%q,"nonce":%q,"url":%q}`, alg, kid, nonce, url)
 
 	} else {
 		jwk, err := EncodeJWK(key.Public())
@@ -46,7 +104,7 @@ func EncodeJWS(claimset interface{}, key crypto.Signer, nonce string, kid string
 			return nil, err
 		}
 
-		header = fmt.Sprintf(`{"alg":"RS256","jwk":%s,"nonce":%q,"url":%q}`, jwk, nonce, url)
+		header = fmt.Sprintf(`{"alg":%q,"jwk":%s,"nonce":%q,"url":%q}`, alg, jwk, nonce, url)
 	}
 
 	headerB64 := base64.RawURLEncoding.EncodeToString([]byte(header))
@@ -62,10 +120,10 @@ func EncodeJWS(claimset interface{}, key crypto.Signer, nonce string, kid string
 
 	/* */
 
-	hash := crypto.SHA256.New()
+	hash := hasher.New()
 	hash.Write([]byte(headerB64 + "." + payloadB64))
 
-	sig, err := key.Sign(rand.Reader, hash.Sum(nil), crypto.SHA256)
+	sig, err := Sign(key, hasher, hash.Sum(nil))
 	if err != nil {
 		return nil, err
 	}
