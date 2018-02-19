@@ -19,7 +19,7 @@ func main() {
 	var args []string
 	cleanup := false
 
-	for _, v := range(os.Args[1:]) {
+	for _, v := range os.Args[1:] {
 		if v == "--cleanup" {
 			cleanup = true
 		} else {
