@@ -65,8 +65,6 @@ func Hasher(key crypto.Signer) (string, crypto.Hash) {
 			return "ES256", crypto.SHA256
 		case "P-384":
 			return "ES384", crypto.SHA384
-		case "P-521":
-			return "ES512", crypto.SHA512
 		}
 	}
 	return "", 0
@@ -93,6 +91,9 @@ func Sign(key crypto.Signer, hasher crypto.Hash, digest []byte) ([]byte, error) 
 
 func EncodeJWS(claimset interface{}, key crypto.Signer, nonce string, kid string, url string) ([]byte, error) {
 	alg, hasher := Hasher(key)
+	if alg == "" {
+		return nil, errors.New("Unsupported.Key")
+	}
 
 	var header string
 	if kid != "" {
