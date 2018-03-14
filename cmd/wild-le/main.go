@@ -19,7 +19,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const EP = "https://acme-staging-v02.api.letsencrypt.org/directory"
+const EP = "https://acme-v02.api.letsencrypt.org/directory"
 
 /* */
 
