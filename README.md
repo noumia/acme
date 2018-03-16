@@ -13,7 +13,7 @@ Build acme tool
 $ go get -u github.com/noumia/acme/cmd/wild-le
 ```
 
-### Regiter your acount
+### Regiter your account
 
 ```
 $ openssl ecparam -out account.key -name prime256v1 -genkey
