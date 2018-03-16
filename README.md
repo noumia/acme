@@ -29,7 +29,7 @@ $ openssl genrsa -out account.key 4096
 $ wild-le account -c acme@example.com --agree-tos
 ```
 
-To register mail address is optional but to aggree the tos is required.
+To register mail address is optional but to agree the tos is required.
 
 
 ### Make server key
