@@ -36,6 +36,8 @@ type Renew struct {
 	request *x509.CertificateRequest
 
 	Certificate string
+
+	lastDomain string
 }
 
 func (p *Renew) DNSSetup(ctx context.Context, domain, text string) bool {
@@ -170,6 +172,10 @@ func (p *Renew) doAuthz(ctx context.Context, aid string) error {
 
 	/* */
 
+	Sleep(ctx, p.Wait) // extra wait for DNS propagation
+
+	/* */
+
 	if cha.Status == "pending" {
 		ka, err := p.cli.GetKeyAuthorization(cha.Token)
 		if err != nil {
@@ -251,6 +257,12 @@ func (p *Renew) doChallenge(ctx context.Context, authz *Authorization, cha *Chal
 
 		for _, v := range ts {
 			if v == text {
+				if p.lastDomain == domain {
+					Sleep(ctx, ms) // extra wait for same domain overwrite
+				} else {
+					p.lastDomain = domain
+				}
+
 				return nil
 			}
 		}
