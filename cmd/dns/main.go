@@ -42,7 +42,7 @@ func process(cli *dns.Service, domain string, text string) error {
 			&dns.ResourceRecordSet{
 				Name:    fqdn,
 				Rrdatas: []string{text},
-				Ttl:     30,
+				Ttl:     10,
 				Type:    "TXT",
 			},
 		}

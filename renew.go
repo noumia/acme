@@ -32,6 +32,7 @@ type Renew struct {
 	DNSRetry int
 	DNSLevel int
 	Wait     int
+	DNSExtra int
 
 	request *x509.CertificateRequest
 
@@ -69,7 +70,8 @@ func NewRenew(cli *Client) *Renew {
 		DNSProbe: 60,
 		DNSRetry: 60,
 		DNSLevel: 10,
-		Wait:     1500, // ms
+		Wait:     1500,      // ms
+		DNSExtra: 30 * 1000, // ms
 	}
 
 	p.Continue = p
@@ -258,7 +260,7 @@ func (p *Renew) doChallenge(ctx context.Context, authz *Authorization, cha *Chal
 		for _, v := range ts {
 			if v == text {
 				if p.lastDomain == domain {
-					Sleep(ctx, ms) // extra wait for same domain overwrite
+					Sleep(ctx, p.DNSExtra) // extra wait for same domain overwrite
 				} else {
 					p.lastDomain = domain
 				}
