@@ -19,7 +19,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const EP = "https://acme-v02.api.letsencrypt.org/directory"
+const sEP = "https://acme-v02.api.letsencrypt.org/directory"
 
 /* */
 
@@ -351,22 +351,24 @@ func main() {
 	app.Usage = "ACMEv2 client tool"
 
 	app.Commands = append(app.Commands,
-		cli.Command{
+		&cli.Command{
 			Name:  "account",
 			Usage: "register account",
 			Flags: []cli.Flag{
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "end-point",
-					Value: EP,
+					Value: sEP,
 				},
-				cli.StringFlag{
-					Name:  "account-key, a",
-					Value: "account.key",
+				&cli.StringFlag{
+					Name:    "account-key",
+					Aliases: []string{"a"},
+					Value:   "account.key",
 				},
-				cli.StringFlag{
-					Name: "contact, c",
+				&cli.StringFlag{
+					Name:    "contact",
+					Aliases: []string{"c"},
 				},
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name: "agree-tos",
 				},
 			},
@@ -374,50 +376,58 @@ func main() {
 		})
 
 	app.Commands = append(app.Commands,
-		cli.Command{
+		&cli.Command{
 			Name:  "renew",
 			Usage: "renew certificate",
 			Flags: []cli.Flag{
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "end-point",
-					Value: EP,
+					Value: sEP,
 				},
-				cli.StringFlag{
-					Name:  "account-key, a",
-					Value: "account.key",
+				&cli.StringFlag{
+					Name:    "account-key",
+					Aliases: []string{"a"},
+					Value:   "account.key",
 				},
-				cli.StringFlag{
-					Name:  "private-key, p",
-					Value: "server.key",
+				&cli.StringFlag{
+					Name:    "private-key",
+					Aliases: []string{"p"},
+					Value:   "server.key",
 				},
-				cli.StringFlag{
-					Name:  "csr, c",
-					Value: "server.csr",
+				&cli.StringFlag{
+					Name:    "csr",
+					Aliases: []string{"c"},
+					Value:   "server.csr",
 				},
-				cli.StringFlag{
-					Name: "domain, d",
+				&cli.StringFlag{
+					Name:    "domain",
+					Aliases: []string{"d"},
 				},
-				cli.StringFlag{
-					Name: "dns-script, s",
+				&cli.StringFlag{
+					Name:    "dns-script",
+					Aliases: []string{"s"},
 				},
-				cli.StringFlag{
-					Name: "dns-lego, l",
+				&cli.StringFlag{
+					Name:    "dns-lego",
+					Aliases: []string{"l"},
 				},
-				cli.BoolFlag{
-					Name: "verbose, v",
+				&cli.BoolFlag{
+					Name:    "verbose",
+					Aliases: []string{"v"},
 				},
 			},
 			Action: wrap(renew),
 		})
 
 	app.Commands = append(app.Commands,
-		cli.Command{
+		&cli.Command{
 			Name:  "cert",
 			Usage: "preview certificate",
 			Flags: []cli.Flag{
-				cli.IntFlag{
-					Name:  "expire-days, d",
-					Value: 30,
+				&cli.IntFlag{
+					Name:    "expire-days",
+					Aliases: []string{"d"},
+					Value:   30,
 				},
 			},
 			Action: wrap(preview),
